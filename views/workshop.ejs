@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Chess Fantasy — Workshop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet"/>
+<style>
+:root{--black:#060606;--surface:#111111;--card:#141414;--border:rgba(255,255,255,.08);--gold:#c9a96e;--gold2:#e8c98a;--text:#e8e2d9;--muted:#6b635d;--accent:#c9a96e;--accent-bg:rgba(201,169,110,.08)}
+html[data-theme="light"]{--black:#f4f5f7;--surface:#ffffff;--card:#ffffff;--border:rgba(15,23,42,.10);--gold:#7b5a23;--gold2:#9b7430;--text:#121417;--muted:#6b7280;--accent:#7b5a23;--accent-bg:rgba(123,90,35,.08)}
+html[data-shoptheme="ember"]{--accent:#ef4444;--accent-bg:rgba(239,68,68,.10)}
+html[data-shoptheme="moon"]{--accent:#60a5fa;--accent-bg:rgba(96,165,250,.12)}
+html[data-shoptheme="verdant"]{--accent:#34d399;--accent-bg:rgba(52,211,153,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--black);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;opacity:.45}
+.site-header{position:sticky;top:0;z-index:10;border-bottom:1px solid var(--border);background:color-mix(in srgb, var(--black) 92%, transparent);backdrop-filter:blur(14px);padding:0 20px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.logo{font-family:'Cinzel',serif;font-size:16px;font-weight:700;letter-spacing:.1em;color:var(--accent);display:flex;align-items:center;gap:10px}
+.nav-actions{display:flex;gap:10px;flex-wrap:wrap}
+.btn,.theme-toggle,.buy-btn{padding:10px 14px;border:1px solid var(--border);background:transparent;color:var(--text);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;cursor:pointer;border-radius:2px;text-decoration:none}
+.btn.gold,.theme-toggle{border-color:color-mix(in srgb, var(--accent) 35%, transparent);color:var(--accent)}
+.btn:hover,.theme-toggle:hover,.buy-btn:hover{background:rgba(255,255,255,.04)}
+.page{position:relative;z-index:1;max-width:1160px;margin:0 auto;padding:42px 18px 80px;display:flex;flex-direction:column;gap:20px}
+.hero{display:grid;grid-template-columns:320px 1fr;gap:20px}.card{background:var(--card);border:1px solid var(--border);padding:24px;border-radius:2px}
+.wallet-orb{width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:56px;background:radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 62%), var(--surface);border:1px solid color-mix(in srgb, var(--accent) 22%, transparent);box-shadow:0 0 40px color-mix(in srgb, var(--accent) 12%, transparent)}
+.title{font-family:'Cinzel',serif;font-size:28px}.sub{color:var(--muted);font-size:12px;line-height:1.8}
+.wallet-grid,.shop-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.stat{background:var(--surface);border:1px solid var(--border);padding:18px;text-align:center}.val{font-family:'Cinzel',serif;font-size:28px;color:var(--accent)}.lbl{font-size:10px;color:var(--muted);letter-spacing:.2em;margin-top:4px}
+.section-title{font-family:'Cinzel',serif;font-size:18px;margin-bottom:14px;color:var(--accent)}
+.shop-grid{grid-template-columns:repeat(3,1fr)}
+.shop-item{background:var(--surface);border:1px solid var(--border);padding:18px;display:flex;flex-direction:column;gap:10px;min-height:250px}.shop-item .icon{font-size:42px}.shop-item h3{font-family:'Cinzel',serif;font-size:18px}.tag{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid color-mix(in srgb, var(--accent) 24%, transparent);background:var(--accent-bg);font-size:10px;color:var(--accent)}
+.buy-btn{margin-top:auto;border-color:color-mix(in srgb, var(--accent) 28%, transparent);color:var(--accent)}
+.buy-btn.primary{background:linear-gradient(135deg,var(--accent),color-mix(in srgb, var(--accent) 70%, #111));color:#fff;border:none}
+.buy-btn:disabled{opacity:.45;cursor:not-allowed}
+.notice{padding:14px;border:1px solid var(--border);background:var(--surface);font-size:11px;line-height:1.8;color:rgba(232,226,217,.78)}
+@media (max-width:860px){.hero,.shop-grid{grid-template-columns:1fr}.wallet-grid{grid-template-columns:1fr 1fr}} @media (max-width:560px){.site-header{height:auto;padding:12px 14px;flex-wrap:wrap}.wallet-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="logo"><span>🛠</span> CHESS FANTASY WORKSHOP</div>
+  <div class="nav-actions">
+    <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()">☀ LIGHT</button>
+    <a class="btn gold" href="lobby.html">Lobby</a>
+    <a class="btn" href="Chess.html">Arena</a>
+    <a class="btn" href="Pf.html">Profile</a>
+  </div>
+</header>
+<main class="page">
+  <section class="hero">
+    <div class="card" style="display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;text-align:center">
+      <div class="wallet-orb">🪙</div>
+      <div class="title">Workshop</div>
+      <div class="sub">Tempat membeli kosmetik, terutama theme premium. Theme berbeda hanya bisa dipakai setelah dibeli dengan coin.</div>
+    </div>
+    <div class="card">
+      <div class="section-title">Wallet</div>
+      <div class="wallet-grid">
+        <div class="stat"><div class="val" id="coinBalance">0</div><div class="lbl">COINS</div></div>
+        <div class="stat"><div class="val" id="coinsEarned">0</div><div class="lbl">EARNED</div></div>
+        <div class="stat"><div class="val" id="coinsSpent">0</div><div class="lbl">SPENT</div></div>
+        <div class="stat"><div class="val" id="cosmeticsOwned">0</div><div class="lbl">OWNED</div></div>
+      </div>
+      <div class="sub" style="margin-top:16px">Theme premium disimpan lokal. Kamu beli sekali lalu bisa dipilih ulang kapan saja di Workshop.</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">Theme Vault</div>
+    <div class="notice">Default theme gratis. Theme premium di bawah akan mengubah nuansa Workshop ini saat dipilih. Cocok untuk fondasi toko kosmetik sebelum theme juga diterapkan ke gameplay dan lobby.</div>
+    <div class="shop-grid" id="themeGrid" style="margin-top:18px"></div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">Coming Soon Cosmetics</div>
+    <div class="shop-grid">
+      <div class="shop-item"><div class="icon">♞</div><h3>Royal Marble Set</h3><div class="sub">Skin bidak marmer putih-gelap untuk seluruh set klasik.</div><span class="tag">Soon · Cosmetic</span><button class="buy-btn" disabled>Belum bisa dibeli</button></div>
+      <div class="shop-item"><div class="icon">✨</div><h3>Victory Bloom</h3><div class="sub">Efek partikel halus saat menang atau saat Jackpot aktif.</div><span class="tag">Soon · Effect</span><button class="buy-btn" disabled>Belum bisa dibeli</button></div>
+      <div class="shop-item"><div class="icon">🌌</div><h3>Board Theme Pack</h3><div class="sub">Fondasi untuk theme papan dan panel alternatif di gameplay pada update berikutnya.</div><span class="tag">Planned · Theme</span><button class="buy-btn" disabled>Segera hadir</button></div>
+    </div>
+  </section>
+</main>
+<script>
+const WALLET_KEY='cf_wallet';
+const THEME_KEY='cf_theme';
+const SHOP_KEY='cf_shop';
+const WORKSHOP_THEMES={
+  default:{name:'Realm Default',icon:'♟',price:0,tag:'Free · Default',desc:'Tema dasar Workshop. Selalu tersedia dan tidak perlu dibeli.'},
+  ember:{name:'Ember Forge',icon:'🔥',price:120,tag:'Premium · Theme',desc:'Nuansa merah-tembaga yang terasa panas dan agresif.'},
+  moon:{name:'Moon Circuit',icon:'🌙',price:160,tag:'Premium · Theme',desc:'Tema dingin biru-perak untuk tampilan workshop yang modern.'},
+  verdant:{name:'Verdant Vault',icon:'🌿',price:150,tag:'Premium · Theme',desc:'Nuansa hijau zamrud yang terasa lebih lembut dan misterius.'}
+};
+function readJson(key, fallback){ try{ const raw=localStorage.getItem(key); return raw?JSON.parse(raw):fallback; }catch(e){ return fallback; } }
+function writeJson(key, value){ try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){} }
+function applyTheme(theme){ const next=theme==='light'?'light':'dark'; document.documentElement.setAttribute('data-theme',next); const btn=document.getElementById('themeToggleBtn'); if(btn) btn.textContent=next==='light'?'🌙 DARK':'☀ LIGHT'; try{localStorage.setItem(THEME_KEY,next);}catch(e){} }
+function toggleTheme(){ const cur=document.documentElement.getAttribute('data-theme')==='light'?'light':'dark'; applyTheme(cur==='light'?'dark':'light'); }
+function getShop(){ return readJson(SHOP_KEY,{ownedThemes:['default'],selectedTheme:'default'}); }
+function saveShop(v){ writeJson(SHOP_KEY,v); }
+function getWallet(){ return readJson(WALLET_KEY,{coins:0,earned:0,spent:0,owned:[]}); }
+function saveWallet(v){ writeJson(WALLET_KEY,v); }
+function applyWorkshopTheme(name){ const shop=getShop(); const allowed=shop.ownedThemes||['default']; const next=allowed.includes(name)?name:'default'; document.documentElement.setAttribute('data-shoptheme', next==='default'?'':next); }
+function refreshWallet(){ const w=getWallet(); document.getElementById('coinBalance').textContent=String(w.coins||0); document.getElementById('coinsEarned').textContent=String(w.earned||0); document.getElementById('coinsSpent').textContent=String(w.spent||0); document.getElementById('cosmeticsOwned').textContent=String((w.owned||[]).length + (getShop().ownedThemes||[]).filter(v=>v!=='default').length); }
+function renderThemes(){
+  const grid=document.getElementById('themeGrid');
+  const shop=getShop();
+  const wallet=getWallet();
+  const owned=new Set(shop.ownedThemes||['default']);
+  const selected=shop.selectedTheme||'default';
+  grid.innerHTML=Object.entries(WORKSHOP_THEMES).map(([key,item])=>{
+    const isOwned=owned.has(key);
+    const isSelected=selected===key;
+    const canBuy=(wallet.coins||0)>=item.price;
+    let action='';
+    if(isSelected) action='<button class="buy-btn primary" disabled>Dipakai</button>';
+    else if(isOwned) action=`<button class="buy-btn" onclick="selectTheme('${key}')">Pakai Theme</button>`;
+    else if(item.price===0) action=`<button class="buy-btn" onclick="selectTheme('default')">Gunakan Default</button>`;
+    else action=`<button class="buy-btn ${canBuy?'primary':''}" ${canBuy?'':'disabled'} onclick="buyTheme('${key}')">Beli ${item.price} Coin</button>`;
+    return `<div class="shop-item"><div class="icon">${item.icon}</div><h3>${item.name}</h3><div class="sub">${item.desc}</div><span class="tag">${item.tag}</span>${action}</div>`;
+  }).join('');
+}
+function buyTheme(key){
+  const item=WORKSHOP_THEMES[key]; if(!item || item.price<=0) return;
+  const wallet=getWallet(); const shop=getShop();
+  if((wallet.coins||0) < item.price){ alert('Coin belum cukup.'); return; }
+  wallet.coins=(wallet.coins||0)-item.price;
+  wallet.spent=(wallet.spent||0)+item.price;
+  wallet.owned=[...(wallet.owned||[]), `theme:${key}`].filter((v,i,a)=>a.indexOf(v)===i);
+  shop.ownedThemes=[...(shop.ownedThemes||['default']), key].filter((v,i,a)=>a.indexOf(v)===i);
+  shop.selectedTheme=key;
+  saveWallet(wallet); saveShop(shop);
+  refreshWallet(); renderThemes(); applyWorkshopTheme(key);
+}
+function selectTheme(key){ const shop=getShop(); if(!(shop.ownedThemes||['default']).includes(key)) return; shop.selectedTheme=key; saveShop(shop); renderThemes(); applyWorkshopTheme(key); }
+(function init(){ const theme=(localStorage.getItem(THEME_KEY)||'dark'); applyTheme(theme); refreshWallet(); renderThemes(); applyWorkshopTheme(getShop().selectedTheme||'default'); })();
+</script>
+</body>
+</html>

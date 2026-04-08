@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "name": "chess-fantasy-app",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index.js" }
+  ]
+}

@@ -1,0 +1,1756 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Chess Fantasy — Realm of Pieces</title>
+
+<!-- ══ SUPABASE SDK ══ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- ══ FONTS ══ -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet"/>
+
+<style>
+/* ══════════════════════════════
+   ROOT VARIABLES
+══════════════════════════════ */
+:root {
+  --black:   #060606;
+  --void:    #0c0c0c;
+  --surface: #111111;
+  --card:    #141414;
+  --card2:   #1a1a1a;
+  --border:  rgba(255,255,255,0.07);
+  --gold:    #c9a96e;
+  --gold2:   #e8c98a;
+  --silver:  #9ba8b5;
+  --crimson: #a03030;
+  --sapphire:#2a4a8e;
+  --emerald: #2a6a3e;
+  --amethyst:#6a3a8e;
+  --text:    #e8e2d9;
+  --muted:   #5a5450;
+  --glow-g:  rgba(201,169,110,0.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--black);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Noise texture */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 999; opacity: 0.6;
+}
+
+/* Board pattern ambient */
+body::after {
+  content: '';
+  position: fixed;
+  top: -20%; left: -20%;
+  width: 140%; height: 140%;
+  background-image:
+    repeating-conic-gradient(rgba(201,169,110,0.012) 0% 25%, transparent 0% 50%);
+  background-size: 80px 80px;
+  pointer-events: none;
+  z-index: 0;
+  animation: boardDrift 60s linear infinite;
+}
+@keyframes boardDrift { to { transform: translate(80px, 80px); } }
+
+/* ══════════════════════════════
+   SCROLLBAR
+══════════════════════════════ */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ══════════════════════════════
+   HEADER / NAV
+══════════════════════════════ */
+.site-header {
+  position: sticky; top: 0; z-index: 100;
+  border-bottom: 1px solid var(--border);
+  background: rgba(6,6,6,0.92);
+  backdrop-filter: blur(16px);
+  padding: 0 40px;
+  display: flex; align-items: center;
+  height: 64px; gap: 24px;
+}
+.logo {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  display: flex; align-items: center; gap: 10px;
+  flex: 1;
+}
+.logo-piece { font-size: 22px; }
+.nav-links { display: flex; gap: 6px; }
+.nav-link {
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  cursor: pointer;
+  background: none;
+  font-family: 'DM Mono', monospace;
+}
+.nav-link:hover, .nav-link.active {
+  color: var(--gold);
+  border-color: rgba(201,169,110,0.2);
+  background: rgba(201,169,110,0.04);
+}
+.header-auth { display: flex; align-items: center; gap: 12px; }
+.user-badge {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; color: var(--muted);
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+.user-badge .char-icon { font-size: 16px; }
+.btn-sm {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px; letter-spacing: 0.25em;
+  padding: 7px 16px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+.btn-outline {
+  background: transparent;
+  border: 1px solid rgba(201,169,110,0.3);
+  color: var(--gold);
+}
+.btn-outline:hover { background: rgba(201,169,110,0.08); border-color: var(--gold); }
+.btn-ghost {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted);
+}
+.btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+
+/* ══════════════════════════════
+   HERO BANNER
+══════════════════════════════ */
+.hero {
+  position: relative; z-index: 1;
+  padding: 80px 40px 60px;
+  text-align: center;
+  overflow: hidden;
+}
+.hero::before {
+  content: '♛';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 320px;
+  color: rgba(201,169,110,0.03);
+  pointer-events: none;
+  animation: heroFloat 8s ease-in-out infinite;
+  line-height: 1;
+}
+@keyframes heroFloat {
+  0%,100% { transform: translate(-50%,-50%) scale(1); }
+  50%      { transform: translate(-50%,-52%) scale(1.02); }
+}
+.hero-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; letter-spacing: 0.5em;
+  color: var(--gold); opacity: 0.7;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.hero-title {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(36px, 7vw, 72px);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, var(--text) 0%, var(--gold) 50%, var(--text) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 20px;
+  animation: heroIn 1s ease forwards;
+}
+@keyframes heroIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+.hero-sub {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px; font-weight: 300;
+  color: rgba(232,226,217,0.55);
+  max-width: 480px; margin: 0 auto 36px;
+  line-height: 1.7;
+  font-style: italic;
+}
+.hero-cta {
+  display: flex; justify-content: center; gap: 12px;
+}
+.btn-primary {
+  font-family: 'Cinzel', serif;
+  font-size: 11px; letter-spacing: 0.2em;
+  padding: 14px 32px;
+  background: linear-gradient(135deg, var(--gold), #a07830);
+  color: var(--black);
+  border: none; border-radius: 2px;
+  cursor: pointer; font-weight: 700;
+  transition: all 0.3s;
+  box-shadow: 0 0 30px rgba(201,169,110,0);
+}
+.btn-primary:hover { box-shadow: 0 0 30px rgba(201,169,110,0.25); transform: translateY(-1px); }
+
+/* ══════════════════════════════
+   PAGE / SECTIONS
+══════════════════════════════ */
+.page { position: relative; z-index: 1; }
+.section { max-width: 1100px; margin: 0 auto; padding: 60px 40px; }
+.sec-label {
+  font-family: 'Cinzel', serif;
+  font-size: 9px; letter-spacing: 0.5em;
+  color: var(--gold); text-transform: uppercase;
+  margin-bottom: 32px;
+  display: flex; align-items: center; gap: 16px;
+}
+.sec-label::before, .sec-label::after {
+  content: '◆';
+  font-size: 6px; opacity: 0.4;
+}
+.sec-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.sec-title {
+  font-family: 'Cinzel', serif;
+  font-size: 28px; font-weight: 700;
+  color: var(--text); margin-bottom: 8px;
+}
+
+/* ══════════════════════════════
+   CHARACTER CARDS
+══════════════════════════════ */
+.chars-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 60px;
+}
+@media (max-width: 900px) { .chars-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 580px) { .chars-grid { grid-template-columns: 1fr; } }
+
+.char-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 28px 24px;
+  position: relative; overflow: hidden;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.23,1,0.32,1);
+  animation: cardIn 0.6s ease both;
+}
+@keyframes cardIn { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+.char-card:hover { transform: translateY(-4px); border-color: rgba(201,169,110,0.2); }
+.char-card.selected { border-color: var(--gold); }
+
+/* Card class-specific accent */
+.char-card[data-class="king"]     { --c-accent: #c9a96e; --c-glow: rgba(201,169,110,0.1); }
+.char-card[data-class="queen"]    { --c-accent: #9b6ec9; --c-glow: rgba(155,110,201,0.1); }
+.char-card[data-class="bishop"]   { --c-accent: #e8e2d9; --c-glow: rgba(232,226,217,0.07); }
+.char-card[data-class="knight"]   { --c-accent: #6e9bc9; --c-glow: rgba(110,155,201,0.1); }
+.char-card[data-class="rook"]     { --c-accent: #a03030; --c-glow: rgba(160,48,48,0.1); }
+.char-card[data-class="pawn"]     { --c-accent: #4ea86a; --c-glow: rgba(78,168,106,0.1); }
+.char-card[data-class="warlock"]  { --c-accent: #8b5cf6; --c-glow: rgba(139,92,246,0.12); }
+.char-card[data-class="necromancer"] { --c-accent: #7c3aed; --c-glow: rgba(124,58,237,0.14); }
+
+.char-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--c-accent, var(--gold));
+  opacity: 0; transition: opacity 0.3s;
+}
+.char-card:hover::before, .char-card.selected::before { opacity: 1; }
+.char-card::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at top, var(--c-glow, transparent) 0%, transparent 65%);
+  pointer-events: none; opacity: 0; transition: opacity 0.3s;
+}
+.char-card:hover::after, .char-card.selected::after { opacity: 1; }
+
+.char-piece {
+  font-size: 44px; line-height: 1;
+  margin-bottom: 16px; display: block;
+  filter: drop-shadow(0 0 12px var(--c-accent, var(--gold)));
+  transition: transform 0.3s;
+}
+.char-card:hover .char-piece { transform: scale(1.1) translateY(-2px); }
+
+.char-class {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px; letter-spacing: 0.4em;
+  color: var(--c-accent, var(--gold));
+  text-transform: uppercase; margin-bottom: 6px;
+}
+.char-name {
+  font-family: 'Cinzel', serif;
+  font-size: 18px; font-weight: 700;
+  color: var(--text); margin-bottom: 8px;
+}
+.char-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px; font-style: italic;
+  color: var(--muted); margin-bottom: 16px;
+}
+.char-lore {
+  font-size: 11px; color: rgba(232,226,217,0.5);
+  line-height: 1.7; margin-bottom: 20px;
+}
+.char-stats {
+  display: flex; gap: 12px; margin-bottom: 20px;
+}
+.stat {
+  flex: 1; text-align: center;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  padding: 8px 4px; border-radius: 2px;
+}
+.stat-val {
+  font-family: 'Cinzel', serif;
+  font-size: 16px; font-weight: 700;
+  color: var(--c-accent, var(--gold));
+}
+.stat-lbl { font-size: 8px; color: var(--muted); letter-spacing: 0.2em; margin-top: 2px; }
+
+.skills-list { display: flex; flex-direction: column; gap: 8px; }
+.skill-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--c-accent, var(--gold));
+  border-radius: 0 2px 2px 0;
+  transition: background 0.2s;
+}
+.char-card:hover .skill-row { background: rgba(0,0,0,0.35); }
+.skill-emoji { font-size: 14px; flex-shrink: 0; }
+.skill-info { flex: 1; }
+.skill-name { font-size: 10px; font-weight: 400; color: var(--text); letter-spacing: 0.08em; }
+.skill-desc { font-size: 9px; color: var(--muted); margin-top: 1px; }
+
+.select-btn {
+  width: 100%; margin-top: 16px;
+  padding: 10px;
+  font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.2em;
+  background: transparent;
+  border: 1px solid var(--c-accent, var(--gold));
+  color: var(--c-accent, var(--gold));
+  cursor: pointer; border-radius: 2px;
+  transition: all 0.25s;
+}
+.select-btn:hover { background: rgba(255,255,255,0.05); }
+.char-card.selected .select-btn {
+  background: var(--c-accent, var(--gold));
+  color: var(--black);
+}
+
+/* ══════════════════════════════
+   CHAT ROOM
+══════════════════════════════ */
+.chat-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 20px;
+  height: 560px;
+}
+@media (max-width: 720px) {
+  .chat-layout { grid-template-columns: 1fr; height: auto; }
+  .chat-sidebar { display: none; }
+}
+.chat-window {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.chat-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(0,0,0,0.2);
+}
+.chat-header-icon { font-size: 18px; }
+.chat-header-title {
+  font-family: 'Cinzel', serif; font-size: 13px;
+  font-weight: 600; color: var(--text);
+}
+.chat-header-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.live-dot {
+  width: 6px; height: 6px;
+  background: #4ea86a;
+  border-radius: 50%; margin-left: auto;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(78,168,106,0.4); }
+  50%      { box-shadow: 0 0 0 5px rgba(78,168,106,0); }
+}
+.chat-messages {
+  flex: 1; overflow-y: auto;
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+}
+.msg {
+  display: flex; gap: 10px; align-items: flex-start;
+  animation: msgIn 0.3s ease;
+}
+@keyframes msgIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.msg.own { flex-direction: row-reverse; }
+.msg-avatar {
+  width: 32px; height: 32px; flex-shrink: 0;
+  background: var(--surface);
+  border-radius: 50%; border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.msg-body { flex: 1; max-width: 75%; }
+.msg.own .msg-body { align-items: flex-end; display: flex; flex-direction: column; }
+.msg-meta {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 4px;
+}
+.msg.own .msg-meta { flex-direction: row-reverse; }
+.msg-username {
+  font-family: 'Cinzel', serif; font-size: 10px;
+  font-weight: 600; color: var(--gold);
+}
+.msg-charname { font-size: 9px; color: var(--muted); letter-spacing: 0.1em; }
+.msg-time { font-size: 8px; color: var(--muted); margin-left: auto; }
+.msg-bubble {
+  padding: 10px 14px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 2px 8px 8px 8px;
+  font-size: 12px; line-height: 1.6;
+  color: rgba(232,226,217,0.9);
+  word-break: break-word;
+}
+.msg.own .msg-bubble {
+  background: rgba(201,169,110,0.08);
+  border-color: rgba(201,169,110,0.2);
+  border-radius: 8px 2px 8px 8px;
+}
+.msg-system {
+  text-align: center; padding: 4px;
+  font-size: 9px; color: var(--muted);
+  letter-spacing: 0.2em;
+}
+
+.chat-input-wrap {
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+  background: rgba(0,0,0,0.15);
+}
+.chat-input {
+  flex: 1;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 10px 14px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px; color: var(--text);
+  outline: none; transition: border-color 0.25s;
+  resize: none;
+}
+.chat-input::placeholder { color: var(--muted); }
+.chat-input:focus { border-color: rgba(201,169,110,0.3); }
+.send-btn {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, var(--gold), #a07830);
+  border: none; border-radius: 2px;
+  color: var(--black); font-size: 16px;
+  cursor: pointer; transition: all 0.2s;
+  flex-shrink: 0;
+}
+.send-btn:hover { transform: scale(1.05); box-shadow: 0 0 16px rgba(201,169,110,0.3); }
+
+/* Sidebar — online users */
+.chat-sidebar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 2px; overflow: hidden;
+}
+.sidebar-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'Cinzel', serif;
+  font-size: 10px; letter-spacing: 0.25em;
+  color: var(--gold); background: rgba(0,0,0,0.2);
+}
+.online-list { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.online-user {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--border); border-radius: 2px;
+}
+.online-piece { font-size: 20px; }
+.online-info { flex: 1; }
+.online-name { font-size: 11px; color: var(--text); }
+.online-class { font-size: 9px; color: var(--muted); letter-spacing: 0.15em; }
+.online-dot { width: 5px; height: 5px; background: #4ea86a; border-radius: 50%; }
+
+/* ══════════════════════════════
+   LOGIN MODAL
+══════════════════════════════ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.88);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--card);
+  border: 1px solid rgba(201,169,110,0.2);
+  border-radius: 2px;
+  padding: 48px 40px;
+  width: 420px; max-width: 90vw;
+  position: relative;
+  transform: translateY(20px);
+  transition: transform 0.3s;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-close {
+  position: absolute; top: 16px; right: 16px;
+  background: none; border: none;
+  color: var(--muted); font-size: 18px; cursor: pointer;
+  transition: color 0.2s;
+}
+.modal-close:hover { color: var(--text); }
+.modal-piece {
+  font-size: 48px; text-align: center;
+  display: block; margin-bottom: 16px;
+  filter: drop-shadow(0 0 16px var(--gold));
+}
+.modal-title {
+  font-family: 'Cinzel', serif; font-size: 22px;
+  font-weight: 700; text-align: center;
+  color: var(--text); margin-bottom: 6px;
+}
+.modal-sub {
+  font-size: 11px; color: var(--muted);
+  text-align: center; margin-bottom: 32px;
+  letter-spacing: 0.15em;
+}
+.modal-tabs {
+  display: flex; gap: 0; margin-bottom: 28px;
+  border: 1px solid var(--border); border-radius: 2px;
+  overflow: hidden;
+}
+.modal-tab {
+  flex: 1; padding: 10px;
+  font-family: 'Cinzel', serif; font-size: 10px;
+  letter-spacing: 0.2em; cursor: pointer;
+  background: none; border: none; color: var(--muted);
+  transition: all 0.2s;
+}
+.modal-tab.active { background: rgba(201,169,110,0.1); color: var(--gold); }
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block; font-size: 9px;
+  letter-spacing: 0.3em; color: var(--muted);
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.form-input {
+  width: 100%; padding: 12px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border); border-radius: 2px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px; color: var(--text);
+  outline: none; transition: border-color 0.25s;
+}
+.form-input:focus { border-color: rgba(201,169,110,0.35); }
+.form-input::placeholder { color: var(--muted); }
+.char-select-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; margin-bottom: 20px;
+}
+.char-pick {
+  background: var(--surface);
+  border: 1px solid var(--border); border-radius: 2px;
+  padding: 10px 6px; cursor: pointer;
+  text-align: center; transition: all 0.2s;
+}
+.char-pick:hover { border-color: rgba(201,169,110,0.3); background: rgba(201,169,110,0.04); }
+.char-pick.selected { border-color: var(--gold); background: rgba(201,169,110,0.08); }
+.char-pick-piece { font-size: 24px; display: block; margin-bottom: 4px; }
+.char-pick-name { font-size: 9px; color: var(--muted); }
+.modal-btn {
+  width: 100%; padding: 14px;
+  font-family: 'Cinzel', serif; font-size: 11px;
+  letter-spacing: 0.25em; font-weight: 700;
+  background: linear-gradient(135deg, var(--gold), #a07830);
+  border: none; border-radius: 2px;
+  color: var(--black); cursor: pointer;
+  transition: all 0.3s;
+}
+.modal-btn:hover { box-shadow: 0 0 24px rgba(201,169,110,0.3); transform: translateY(-1px); }
+.oauth-divider{display:flex;align-items:center;gap:10px;margin:16px 0 14px;color:var(--muted);font-size:9px;letter-spacing:0.22em;text-transform:uppercase}
+.oauth-divider::before,.oauth-divider::after{content:'';flex:1;height:1px;background:linear-gradient(to right,transparent,var(--border),transparent)}
+.oauth-btn{width:100%;padding:12px 14px;border-radius:2px;border:1px solid var(--border);background:rgba(255,255,255,0.03);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;font-family:'DM Mono',monospace;font-size:12px;transition:all .2s}
+.oauth-btn:hover{border-color:rgba(201,169,110,0.35);background:rgba(201,169,110,0.07)}
+.google-logo{width:18px;height:18px;display:block;flex-shrink:0}
+.wallet-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid rgba(201,169,110,0.24);background:rgba(201,169,110,0.08);border-radius:999px;font-size:10px;color:var(--text)}
+.guide-note-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}
+.guide-note{background:var(--card);border:1px solid var(--border);padding:18px;border-radius:2px}
+.guide-note h3{font-family:'Cinzel',serif;font-size:15px;color:var(--gold);margin-bottom:10px}
+.guide-note p,.guide-note li{font-size:11px;color:rgba(232,226,217,0.76);line-height:1.85}
+.guide-note ul{padding-left:18px}
+.class-guide-modal{width:min(94vw,560px);max-height:min(90vh,860px);overflow:auto;text-align:left}
+.class-guide-head{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.class-guide-glyph{width:74px;height:74px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:34px;border:1px solid rgba(201,169,110,.22);background:rgba(201,169,110,.08)}
+.class-guide-kicker{font-size:9px;letter-spacing:.34em;color:var(--gold);text-transform:uppercase}
+.class-guide-name{font-family:'Cinzel',serif;font-size:24px;color:var(--text);margin-top:4px}
+.class-guide-text{font-size:12px;line-height:1.8;color:rgba(232,226,217,.72);margin-top:6px}
+.class-guide-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.class-guide-pill{padding:12px;border:1px solid var(--border);background:rgba(255,255,255,.02)}
+.class-guide-pill b{display:block;font-size:10px;letter-spacing:.16em;color:var(--text);margin-bottom:4px}
+.class-guide-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:16px}
+@media (max-width:700px){.guide-note-grid,.class-guide-grid{grid-template-columns:1fr}}
+
+.wallet-badge b{font-family:'Cinzel',serif;color:var(--gold);font-size:13px;letter-spacing:.06em}
+.modal-error {
+  font-size: 10px; color: #e57373;
+  text-align: center; margin-top: 12px;
+  min-height: 16px; letter-spacing: 0.1em;
+}
+.modal-note {
+  font-size: 9px; color: var(--muted);
+  text-align: center; margin-top: 16px;
+  letter-spacing: 0.15em; line-height: 1.8;
+  padding: 12px;
+  background: rgba(201,169,110,0.04);
+  border: 1px solid rgba(201,169,110,0.1);
+  border-radius: 2px;
+}
+
+/* ══════════════════════════════
+   MISC UTILITY
+══════════════════════════════ */
+.divider-fancy {
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 40px; margin: 0;
+}
+.divider-fancy::before, .divider-fancy::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(to right, transparent, var(--border), transparent);
+}
+.divider-fancy span {
+  font-size: 18px; color: var(--gold); opacity: 0.4;
+  flex-shrink: 0;
+}
+.toast {
+  position: fixed; bottom: 32px; right: 32px; z-index: 9999;
+  background: var(--card);
+  border: 1px solid rgba(201,169,110,0.3);
+  border-left: 3px solid var(--gold);
+  padding: 14px 20px;
+  font-size: 12px; color: var(--text);
+  border-radius: 2px;
+  transform: translateX(120%);
+  transition: transform 0.35s cubic-bezier(0.23,1,0.32,1);
+  max-width: 300px;
+}
+.toast.show { transform: translateX(0); }
+.needs-login-msg {
+  text-align: center; padding: 40px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px; font-style: italic;
+  color: var(--muted);
+}
+.needs-login-msg .big-piece { font-size: 48px; display: block; margin-bottom: 16px; opacity: 0.3; }
+
+.top-nav-wrap{display:flex;align-items:center;gap:10px;min-width:0}
+@media (max-width: 900px){
+  .site-header{padding:10px 14px;height:auto;flex-wrap:wrap;gap:12px}
+  .logo{flex:1 1 100%;justify-content:center}
+  .top-nav-wrap{width:100%;justify-content:space-between;gap:8px}
+  .nav-links{overflow:auto;flex:1;padding-bottom:2px}
+  .nav-links::-webkit-scrollbar{display:none}
+  .header-auth{gap:8px}
+  .hero{padding:48px 18px 36px}
+  .hero-cta{flex-direction:column}
+  .section{padding:36px 18px}
+  .chat-layout {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+    }
+  .chat-sidebar {
+        display: block !important; /* Munculkan di mobile */
+        margin-top: 20px;
+        order: 2;
+    }
+    .chat-window {
+        order: 1;
+        height: 500px; /* Batasi tinggi chat di mobile */
+    }
+  .chars-grid{grid-template-columns:1fr}
+}
+@media (max-width: 640px){
+  .btn-sm{padding:7px 10px;letter-spacing:0.15em}
+  .user-badge{padding:6px 9px;font-size:10px}
+  .hero-sub{font-size:16px}
+  .sec-title{font-size:22px}
+}
+
+html[data-theme="light"]{
+  --black:#f4f5f7; --void:#ffffff; --surface:#ffffff; --card:#ffffff; --card2:#eef1f4;
+  --border:rgba(15,23,42,0.10); --gold:#7b5a23; --gold2:#9b7430;
+  --silver:#5d6774; --crimson:#b42318; --sapphire:#315ea8; --emerald:#1f7a4c; --amethyst:#7c3aed;
+  --text:#121417; --muted:#6b7280; --glow-g:rgba(123,90,35,0.08);
+}
+body.simple-theme::before{opacity:.012}
+body.simple-theme::after{display:none}
+html[data-theme="light"] body::before{opacity:.008}
+body.simple-theme .site-header,
+body.simple-theme .char-card,
+body.simple-theme .chat-window,
+body.simple-theme .chat-sidebar,
+body.simple-theme .modal,
+body.simple-theme .online-user,
+body.simple-theme .msg-bubble,
+body.simple-theme .msg.own .msg-bubble,
+body.simple-theme .skill-row,
+body.simple-theme .stat{backdrop-filter:none;box-shadow:none}
+body.simple-theme .hero-title{
+  background:none;
+  -webkit-text-fill-color:unset;
+  color:var(--text);
+}
+.theme-toggle{
+  border:1px solid rgba(201,169,110,0.3);
+  background:transparent;color:var(--gold);
+  padding:7px 14px;border-radius:2px;cursor:pointer;
+  font:400 10px 'DM Mono',monospace;letter-spacing:.22em;text-transform:uppercase
+}
+.theme-toggle:hover{background:rgba(201,169,110,0.08)}
+
+</style>
+</head>
+<body>
+
+<!-- ══════ MODAL LOGIN/REGISTER ══════ -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <span class="modal-piece">♛</span>
+    <h2 class="modal-title">Realm of Pieces</h2>
+    <p class="modal-sub">Masuk untuk bergabung ke medan perang</p>
+
+    <div class="modal-tabs">
+      <button class="modal-tab active" id="tabLogin" onclick="switchTab('login')">Login</button>
+      <button class="modal-tab" id="tabReg" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div id="formLogin">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="loginEmail" type="email" placeholder="pejuang@realm.id"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="loginPass" type="password" placeholder="••••••••"/>
+      </div>
+      <button class="modal-btn" onclick="doLogin()">⚔ Memasuki Realm</button>
+      <div class="oauth-divider"><span>atau</span></div>
+      <button class="oauth-btn" onclick="doGoogleLogin()"><svg class="google-logo" viewBox="0 0 24 24" aria-hidden="true">
+  <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.2-2.27H12v4.3h6.44a5.5 5.5 0 0 1-2.39 3.61v3h3.87c2.26-2.08 3.57-5.14 3.57-8.64Z"/>
+  <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.91l-3.87-3A7.18 7.18 0 0 1 12 19.33a7.2 7.2 0 0 1-6.78-4.96H1.22v3.09A12 12 0 0 0 12 24Z"/>
+  <path fill="#FBBC05" d="M5.22 14.37A7.2 7.2 0 0 1 4.84 12c0-.82.14-1.62.38-2.37V6.54H1.22A12 12 0 0 0 0 12c0 1.94.46 3.77 1.22 5.46l4-3.09Z"/>
+  <path fill="#EA4335" d="M12 4.76c1.76 0 3.34.61 4.59 1.8l3.44-3.44C17.95 1.12 15.23 0 12 0A12 12 0 0 0 1.22 6.54l4 3.09A7.2 7.2 0 0 1 12 4.76Z"/>
+</svg><span>Login dengan Google</span></button>
+<button class="oauth-btn" onclick="doGithubLogin()" style="margin-top: 8px; background: rgba(255,255,255,0.05);">
+    <svg class="github-logo" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+        <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+    </svg>
+    <span>Login dengan GitHub</span>
+</button>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div id="formRegister" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input class="form-input" id="regName" type="text" placeholder="Nama pejuangmu"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="regEmail" type="email" placeholder="email@realm.id"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="regPass" type="password" placeholder="min 6 karakter"/>
+      </div>
+      <div class="modal-note" style="margin-bottom:18px">
+        Akun lobby tidak lagi memilih karakter. Di sini kamu hanya lihat panduan skill, lalu pemilihan kelas dilakukan saat masuk ke arena.
+      </div>
+      <button class="modal-btn" onclick="doRegister()">✨ Bergabung ke Realm</button>
+      <div class="modal-note" id="demoNote">
+        ⚠ Mode Demo aktif — data tidak disimpan permanen.<br/>
+        Masuk lalu pakai tombol Arena untuk masuk ke client battle.
+      </div>
+    </div>
+    <div class="modal-error" id="authError"></div>
+  </div>
+</div>
+
+<!-- ══════ TOAST ══════ -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════ HEADER ══════ -->
+<header class="site-header">
+  <div class="logo">
+    <span class="logo-piece">♞</span>
+    CHESS FANTASY
+  </div>
+  <div class="top-nav-wrap">
+    <nav class="nav-links">
+      <button class="nav-link active" onclick="showPage('home', this)">Beranda</button>
+      <button class="nav-link" onclick="showPage('skills', this)">Skill Atlas</button>
+      <button class="nav-link" onclick="showPage('events', this)">Event</button>
+      <button class="nav-link" onclick="showPage('chat', this)">Ruang Perang</button>
+      <button class="nav-link" onclick="openWorkshop()">Workshop</button>
+      <button class="nav-link" onclick="openProfile()">Profil</button>
+    </nav>
+    <div class="header-auth" id="headerAuth">
+      <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()">☀ LIGHT</button>
+      <button class="btn-sm btn-outline" onclick="openModal()">Login / Register</button>
+    </div>
+  </div>
+</header>
+
+<!-- ══════ HERO ══════ -->
+<section class="hero page" id="heroSection">
+  <p class="hero-eyebrow">[ Realm of Pieces — Chapter I ]</p>
+  <h1 class="hero-title">Chess Fantasy</h1>
+  <p class="hero-sub">Dunia catur fantasi dengan sistem class, relic, dan pertempuran taktis.</p>
+  
+  <div class="hero-cta" id="heroCta">
+    </div>
+</section>
+
+
+<!-- ══════ PAGE: SKILLS ══════ -->
+<div class="page" id="pageSkills" style="display:none;">
+  <div class="section">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+      <div class="sec-label" style="margin-bottom:0">Panduan Class & Bermain</div>
+      <button class="btn-sm btn-ghost" onclick="showPage('home')">← Back</button>
+    </div>
+    <h2 class="sec-title">Klik class untuk melihat fokus, cooldown, dan tips singkat</h2>
+    <p style="color:var(--muted);font-size:12px;line-height:1.8;margin:10px 0 24px">Guide lobby sekarang diselaraskan dengan gameplay terbaru. Saat kamu klik satu class, kartu lain “tertutup” oleh modal fokus agar lebih mudah dibaca.</p>
+    <div class="chars-grid">
+      <div class="char-card" data-class="king" style="animation-delay:0.1s" onclick="openClassGuideDetail('king')">
+        <span class="char-piece">✦</span>
+        <div class="char-class">Tempo Class</div>
+        <div class="char-name">Commander</div>
+        <div class="char-title">"Satu tempo ekstra bisa mengubah seluruh papan"</div>
+        <div class="char-lore">Class tempo yang memberi satu langkah bonus untuk combo, pressure, atau kabur dari ancaman.</div>
+        <div class="char-stats"><div class="stat"><div class="stat-val">88</div><div class="stat-lbl">TEMPO</div></div><div class="stat"><div class="stat-val">65</div><div class="stat-lbl">SAFE</div></div><div class="stat"><div class="stat-val">9</div><div class="stat-lbl">CD</div></div></div>
+        <div class="skills-list"><div class="skill-row"><span class="skill-emoji">✦</span><div class="skill-info"><div class="skill-name">Royal Command</div><div class="skill-desc">Dapat 1 langkah ekstra. Cooldown 9 turn.</div></div></div></div>
+      </div>
+
+      <div class="char-card" data-class="queen" style="animation-delay:0.2s" onclick="openClassGuideDetail('queen')">
+        <span class="char-piece">❈</span>
+        <div class="char-class">Burst Class</div>
+        <div class="char-name">Arcanist</div>
+        <div class="char-title">"Hilang satu bidak, berubah satu game"</div>
+        <div class="char-lore">Burst class untuk menghapus satu bidak musuh non-King/non-Arcanist. Dibatasi dua kali per match.</div>
+        <div class="char-stats"><div class="stat"><div class="stat-val">96</div><div class="stat-lbl">BURST</div></div><div class="stat"><div class="stat-val">54</div><div class="stat-lbl">RISK</div></div><div class="stat"><div class="stat-val">14</div><div class="stat-lbl">CD</div></div></div>
+        <div class="skills-list"><div class="skill-row"><span class="skill-emoji">❈</span><div class="skill-info"><div class="skill-name">Arcane Storm</div><div class="skill-desc">Erase 1 enemy piece. Max 2 casts per match.</div></div></div></div>
+      </div>
+
+      <div class="char-card" data-class="bishop" style="animation-delay:0.3s" onclick="openClassGuideDetail('bishop')">
+        <span class="char-piece">⛨</span>
+        <div class="char-class">Support Class</div>
+        <div class="char-name">Guardian</div>
+        <div class="char-title">"Yang bertahan lebih lama akan menang lebih tenang"</div>
+        <div class="char-lore">Support class yang memberi Astral Ward 3 turn dan membersihkan lock dari bidak teman.</div>
+        <div class="char-stats"><div class="stat"><div class="stat-val">84</div><div class="stat-lbl">SUPPORT</div></div><div class="stat"><div class="stat-val">80</div><div class="stat-lbl">SAVE</div></div><div class="stat"><div class="stat-val">7</div><div class="stat-lbl">CD</div></div></div>
+        <div class="skills-list"><div class="skill-row"><span class="skill-emoji">⛨</span><div class="skill-info"><div class="skill-name">Astral Ward</div><div class="skill-desc">Ward ally 3 turn + cleanse lock.</div></div></div></div>
+      </div>
+
+      <div class="char-card" data-class="knight" style="animation-delay:0.4s" onclick="openClassGuideDetail('knight')">
+        <span class="char-piece">✧</span>
+        <div class="char-class">Mobility Class</div>
+        <div class="char-name">Rider</div>
+        <div class="char-title">"Tidak perlu jalan biasa kalau bisa lompat ke ancaman"</div>
+        <div class="char-lore">Class mobilitas yang memindahkan knight ke petak kosong mana pun untuk fork dan trik cepat.</div>
+        <div class="char-stats"><div class="stat"><div class="stat-val">92</div><div class="stat-lbl">MOBILITY</div></div><div class="stat"><div class="stat-val">78</div><div class="stat-lbl">TRICK</div></div><div class="stat"><div class="stat-val">6</div><div class="stat-lbl">CD</div></div></div>
+        <div class="skills-list"><div class="skill-row"><span class="skill-emoji">✧</span><div class="skill-info"><div class="skill-name">Night Leap</div><div class="skill-desc">Teleport 1 knight to any empty square.</div></div></div></div>
+      </div>
+
+      <div class="char-card" data-class="rook" style="animation-delay:0.5s" onclick="openClassGuideDetail('rook')">
+        <span class="char-piece">✠</span>
+        <div class="char-class">Anchor Class</div>
+        <div class="char-name">Citadel</div>
+        <div class="char-title">"Benteng yang hidup membuat posisi tetap berdiri"</div>
+        <div class="char-lore">Citadel memberi Bastion Pulse pada rook sendiri atau ally di dekat rook agar strukturmu tidak gampang runtuh.</div>
+        <div class="char-stats"><div class="stat"><div class="stat-val">86</div><div class="stat-lbl">ANCHOR</div></div><div class="stat"><div class="stat-val">82</div><div class="stat-lbl">HOLD</div></div><div class="stat"><div class="stat-val">7</div><div class="stat-lbl">CD</div></div></div>
+        <div class="skills-list"><div class="skill-row"><span class="skill-emoji">✠</span><div class="skill-info"><div class="skill-name">Bastion Pulse</div><div class="skill-desc">Ward 2 turn pada rook atau ally di dekat rook.</div></div></div></div>
+      </div>
+
+      <div class="char-card" data-class="pawn" style="animation-delay:0.6s" onclick="openClassGuideDetail('pawn')">
+        <span class="char-piece">❖</span>
+        <div class="char-class">Growth Class</div>
+        <div class="char-name">Vanguard</div>
+        <div class="char-title">"Yang kecil menjadi ancaman saat waktunya tepat"</div>
+        <div class="char-lore">Growth class yang mengubah pion terdepan jadi Bishop, atau Queen jika Queen utamamu sudah hilang.</div>
+        <div class="char-stats"><div class="stat"><div class="stat-val">72</div><div class="stat-lbl">GROWTH</div></div><div class="stat"><div class="stat-val">86</div><div class="stat-lbl">LATE</div></div><div class="stat"><div class="stat-val">12</div><div class="stat-lbl">CD</div></div></div>
+        <div class="skills-list"><div class="skill-row"><span class="skill-emoji">❖</span><div class="skill-info"><div class="skill-name">Vanguard Crown</div><div class="skill-desc">Promote lead pawn with better scaling.</div></div></div></div>
+      </div>
+
+      <div class="char-card" data-class="necromancer" style="animation-delay:0.65s" onclick="openClassGuideDetail('necromancer')">
+        <span class="char-piece">☥</span>
+        <div class="char-class">Recovery Class</div>
+        <div class="char-name">Revenant</div>
+        <div class="char-title">"Material yang hilang belum tentu benar-benar hilang"</div>
+        <div class="char-lore">Late-game utility untuk membangkitkan Pawn, Knight, atau Bishop dari daftar korban ke backline.</div>
+        <div class="char-stats"><div class="stat"><div class="stat-val">91</div><div class="stat-lbl">REVIVE</div></div><div class="stat"><div class="stat-val">76</div><div class="stat-lbl">LATE</div></div><div class="stat"><div class="stat-val">12</div><div class="stat-lbl">CD</div></div></div>
+        <div class="skills-list"><div class="skill-row"><span class="skill-emoji">☥</span><div class="skill-info"><div class="skill-name">Soul Recall</div><div class="skill-desc">Revive Pawn, Knight, or Bishop if backline has room.</div></div></div></div>
+      </div>
+
+      <div class="char-card" data-class="warlock" style="animation-delay:0.7s" onclick="openClassGuideDetail('warlock')">
+        <span class="char-piece">⚚</span>
+        <div class="char-class">Chaos Class</div>
+        <div class="char-name">Relic</div>
+        <div class="char-title">"Ia menang dengan mengubah aturan papan"</div>
+        <div class="char-lore">Class chaos yang memanggil relic acak mulai mid game. Jackpot punya chance 5% dan efek audio/visual spesial.</div>
+        <div class="char-stats"><div class="stat"><div class="stat-val">95</div><div class="stat-lbl">CHAOS</div></div><div class="stat"><div class="stat-val">87</div><div class="stat-lbl">UTILITY</div></div><div class="stat"><div class="stat-val">8</div><div class="stat-lbl">CD</div></div></div>
+        <div class="skills-list">
+          <div class="skill-row"><span class="skill-emoji">⚚</span><div class="skill-info"><div class="skill-name">Chaos Relic</div><div class="skill-desc">Spawn relic acak mid game onward.</div></div></div>
+          <div class="skill-row"><span class="skill-emoji">🎰</span><div class="skill-info"><div class="skill-name">Jackpot</div><div class="skill-desc">5% chance. Bonus move, chain capture, golden vignette, special SFX.</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="guide-note-grid">
+      <div class="guide-note">
+        <h3>Cara Mulai Match</h3>
+        <ul>
+          <li>Login atau isi identitas lokal seperlunya.</li>
+          <li>Pilih class di Arena, bukan di halaman ini.</li>
+          <li>Pakai <b>Tutorial Mode</b> di Arena untuk panduan langkah demi langkah.</li>
+          <li>VS Online memakai room code, Ranked Player memakai matchmaking.</li>
+        </ul>
+      </div>
+      <div class="guide-note">
+        <h3>Info Penting</h3>
+        <ul>
+          <li>Skill dikunci saat rajamu sedang skak.</li>
+          <li>Draw/remis bisa muncul lewat aturan catur standar.</li>
+          <li>Workshop dipakai untuk kosmetik dan coin sinkron lokal.</li>
+          <li>Admin Lab hanya untuk testing dan tidak memberi reward.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="classGuideModal" onclick="if(event.target.id==='classGuideModal')closeClassGuideDetail()">
+  <div class="modal class-guide-modal">
+    <button class="modal-close" onclick="closeClassGuideDetail()">✕</button>
+    <div class="class-guide-head">
+      <div class="class-guide-glyph" id="guideGlyph">✦</div>
+      <div>
+        <div class="class-guide-kicker" id="guideRole">Tempo Class</div>
+        <div class="class-guide-name" id="guideName">Commander</div>
+        <div class="class-guide-text" id="guideLore">Lore class.</div>
+      </div>
+    </div>
+    <div class="class-guide-pill"><b>SKILL</b><span id="guideSkill">Skill utama.</span></div>
+    <div class="class-guide-grid">
+      <div class="class-guide-pill"><b>PLAYSTYLE</b><span id="guideStyle">Tempo</span></div>
+      <div class="class-guide-pill"><b>COOLDOWN</b><span id="guideCd">9 turn</span></div>
+      <div class="class-guide-pill"><b>BEST FOR</b><span id="guideFor">Pemula</span></div>
+      <div class="class-guide-pill"><b>WATCH OUT</b><span id="guideWarn">Jangan saat raja bahaya.</span></div>
+    </div>
+    <div class="class-guide-pill" style="margin-top:12px"><b>TIPS</b><span id="guideTip">Tips singkat.</span></div>
+    <div class="class-guide-actions">
+      <button class="btn-sm btn-ghost" onclick="closeClassGuideDetail()">Kembali</button>
+      <button class="btn-sm btn-outline" onclick="goArena()">Pilih Class di Arena</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ PAGE: CHAT ══════ -->
+
+
+<div class="page" id="pageEvents" style="display:none;">
+  <div class="section">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+      <div class="sec-label" style="margin-bottom:0">Event Realm</div>
+      <button class="btn-sm btn-ghost" onclick="showPage('home')">← Back</button>
+    </div>
+    <h2 class="sec-title">Event aktif, preview konten, dan agenda musiman</h2>
+    <p style="color:var(--muted);font-size:12px;line-height:1.8;margin:10px 0 24px">Tab ini dipakai untuk menaruh event musiman, bonus login, rotasi class, dan pengumuman update. Untuk sekarang isinya masih fondasi UI agar nanti mudah ditambah dari backend atau event lokal.</p>
+    <div class="guide-note-grid">
+      <div class="guide-note">
+        <h3>Jackpot Rush</h3>
+        <p>Event showcase untuk class <b>Relic</b>. Fokusnya pada momen Jackpot, reward coin tambahan, dan efek kosmetik edisi terbatas di Workshop.</p>
+        <ul>
+          <li>Status: <b>Preview UI</b></li>
+          <li>Reward target: coin, frame, vignette</li>
+          <li>Cocok dipakai untuk test event nanti</li>
+        </ul>
+      </div>
+      <div class="guide-note">
+        <h3>Ranked Sprint</h3>
+        <p>Event kompetitif singkat untuk dorong pemain naik tier. Bisa dipakai untuk bonus rank point atau coin jika mode ranked player sudah stabil.</p>
+        <ul>
+          <li>Status: <b>Planned</b></li>
+          <li>Fokus: Bronze / Silver / Gold ladder</li>
+          <li>Bisa dikaitkan ke match count mingguan</li>
+        </ul>
+      </div>
+      <div class="guide-note">
+        <h3>Class Rotation</h3>
+        <p>Rotasi class mingguan untuk memberi spotlight pada satu class. Bagus dipakai untuk edukasi pemain baru dan balance patch.</p>
+        <ul>
+          <li>Status: <b>Prototype</b></li>
+          <li>Contoh minggu ini: Guardian & Revenant</li>
+          <li>Bisa dipasangkan dengan diskon kosmetik theme</li>
+        </ul>
+      </div>
+      <div class="guide-note">
+        <h3>Developer Notes</h3>
+        <p>Ruang ini juga bisa dipakai untuk changelog singkat: buff/nerf, bugfix AI, update guide, atau season reset.</p>
+        <ul>
+          <li>Tambahkan changelog singkat per patch</li>
+          <li>Taruh countdown season di sini</li>
+          <li>Simpan event state di backend nanti</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="pageChat" style="display:none;">
+  <div class="section">
+    <div class="sec-label">Ruang Perang — Live Chat</div>
+    <div id="chatLoggedOut" class="needs-login-msg" style="display:none;">
+      <span class="big-piece">♟</span>
+      Kamu belum masuk ke realm.<br/>
+      <button class="btn-primary" style="margin-top:20px; padding:12px 28px;" onclick="openModal()">Login / Register</button>
+    </div>
+    <div id="chatLoggedIn" style="display:none;">
+      <div class="chat-layout">
+        <div class="chat-window">
+          <div class="chat-header">
+            <span class="chat-header-icon">⚔</span>
+            <div>
+              <div class="chat-header-title">Medan Perang Utama</div>
+              <div class="chat-header-sub">Semua pejuang dapat berbicara di sini</div>
+            </div>
+            <div class="live-dot" title="Live"></div>
+          </div>
+          <div class="chat-messages" id="chatMessages"></div>
+          <div class="chat-input-wrap">
+            <textarea class="chat-input" id="chatInput" rows="1"
+              placeholder="Tulis pesanmu, pejuang..."
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}"></textarea>
+            <button class="send-btn" onclick="sendMsg()">➤</button>
+          </div>
+        </div>
+        <div class="chat-sidebar">
+          <div class="sidebar-header">⚔ Pejuang Online</div>
+          <div class="online-list" id="onlineList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:80px;"></div>
+
+
+<script>
+/* ════════════════════════════════════════
+   ██████╗  ██████╗
+   CONFIG — GANTI DI SINI
+   ████████████████████████████████████████ */
+
+const SB_URL = '<%= supabaseUrl %>';
+const SB_KEY = '<%= supabaseKey %>';
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+const DEMO_MODE = (SB_URL === 'YOUR_SUPABASE_URL');
+let sb = null;
+if (!DEMO_MODE) {
+  sb = supabase.createClient(SB_URL, SB_KEY);
+}
+
+/* ── State ── */
+let currentUser   = null;  // { id, email, username, piece, charClass, charName }
+let selectedChar  = null;
+let regChar       = { piece: '♞', cls: 'none' };
+let messages      = [];
+let onlineUsers   = [];
+let realtimeSub   = null;
+const STORAGE_PROFILE_KEY = 'cf_profile';
+const STORAGE_WALLET_KEY = 'cf_wallet';
+const STORAGE_THEME_KEY = 'cf_theme';
+
+/* ════════════════════════════════════════
+   DEMO MODE FAKE DATA
+════════════════════════════════════════ */
+const FAKE_USERS = [
+  { id:'u1', username:'Gandalf', piece:'🌀', charName:'Arcanist', charClass:'queen' },
+  { id:'u2', username:'Aragon',  piece:'👑', charName:'Commander',    charClass:'king'  },
+  { id:'u3', username:'Legolas', piece:'🌙', charName:'Rider', charClass:'knight' },
+];
+const FAKE_MSGS = [
+  { id:'m1', username:'Gandalf', piece:'🌀', charName:'Arcanist', message:'Selamat datang di Realm of Pieces!', ts: Date.now()-120000 },
+  { id:'m2', username:'Aragon',  piece:'👑', charName:'Commander',    message:'Ayo bergabung dan pilih class favoritmu!', ts: Date.now()-60000 },
+  { id:'m3', username:'Legolas', piece:'🌙', charName:'Rider', message:'Rider siap lompat ke petak mana saja 🌙', ts: Date.now()-30000 },
+];
+
+
+function readWallet(){
+  try{
+    const raw=localStorage.getItem(STORAGE_WALLET_KEY);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      return {coins:Number(parsed.coins||0),earned:Number(parsed.earned||0),spent:Number(parsed.spent||0),owned:Array.isArray(parsed.owned)?parsed.owned:[]};
+    }
+  }catch(e){}
+  return {coins:0,earned:0,spent:0,owned:[]};
+}
+
+/* ════════════════════════════════════════
+   AUTH
+════════════════════════════════════════ */
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  setAuthError('');
+
+  if (DEMO_MODE) {
+    // Demo login simulation
+    if (!email || !pass) { setAuthError('Isi email dan password!'); return; }
+    const demoUser = {
+      id: 'demo-' + Date.now(),
+      email, username: email.split('@')[0],
+      piece: '👑', charName: 'Commander', charClass: 'king'
+    };
+    onLoginSuccess(demoUser);
+    return;
+  }
+
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) { setAuthError(error.message); return; }
+    const meta = data.user.user_metadata;
+    onLoginSuccess({
+      id: data.user.id, email: data.user.email,
+      username: meta.username || data.user.email.split('@')[0],
+      piece: meta.piece || '♞',
+      charName: meta.charName || 'Pejuang Realm',
+      charClass: meta.charClass || 'none'
+    });
+  } catch(e) { setAuthError('Gagal login. Cek koneksi.'); }
+}
+
+async function doGoogleLogin(){
+  window.location.href = '/auth/google';
+}
+
+async function doGithubLogin() {
+    window.location.href = '/auth/github';
+}
+
+async function handleAuthRedirect() {
+    const { data } = await sb.auth.getSession();
+    if (data?.session) {
+        // Bersihkan URL dari hash token agar rapi
+        window.history.replaceState({}, document.title, window.location.pathname);
+        const u = data.session.user;
+        const meta = u.user_metadata;
+        onLoginSuccess({ 
+            id: u.id, email: u.email, 
+            username: meta.username || meta.full_name || u.email.split('@')[0], 
+            piece: meta.piece || '♞', 
+            charName: meta.charName || 'Pejuang', 
+            charClass: meta.charClass || 'none' 
+        });
+    }
+}
+window.addEventListener('load', handleAuthRedirect);
+
+async function doRegister() {
+  const name  = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass  = document.getElementById('regPass').value;
+  setAuthError('');
+
+  if (!name || !email || !pass) { setAuthError('Semua kolom wajib diisi!'); return; }
+  if (pass.length < 6) { setAuthError('Password minimal 6 karakter!'); return; }
+
+  const charData = {
+    username: name,
+    piece: '♞',
+    charClass: 'none',
+    charName: 'Pejuang Realm'
+  };
+
+  if (DEMO_MODE) {
+    const demoUser = { id: 'demo-' + Date.now(), email, ...charData };
+    onLoginSuccess(demoUser);
+    return;
+  }
+
+  try {
+    const { data, error } = await sb.auth.signUp({
+      email, password: pass,
+      options: { data: charData }
+    });
+    if (error) { setAuthError(error.message); return; }
+    const meta = data.user.user_metadata;
+    onLoginSuccess({ id: data.user.id, email, username: meta.username || name, piece: meta.piece || '♞', charName: meta.charName || 'Pejuang Realm', charClass: meta.charClass || 'none' });
+    showToast('✨ Selamat datang di Realm!');
+  } catch(e) { setAuthError('Gagal register. Coba lagi.'); }
+}
+
+function persistProfile(user){ try{ localStorage.setItem(STORAGE_PROFILE_KEY, JSON.stringify(user)); }catch(e){} }
+
+function onLoginSuccess(user) {
+  currentUser = user;
+  persistProfile(user);
+  closeModal();
+  updateHeaderAuth();
+  updateChatSection();
+  updateHeroCta(true);
+  if (!DEMO_MODE) subscribeChat();
+  showToast(`⚔ ${user.username} telah memasuki Realm!`);
+  addOnlineUser(user);
+}
+
+async function doLogout() {
+  if (!DEMO_MODE && sb) await sb.auth.signOut();
+  if (realtimeSub) { sb.removeChannel(realtimeSub); realtimeSub = null; }
+  removeOnlineUser(currentUser?.id);
+  currentUser = null;
+  try{ localStorage.removeItem(STORAGE_PROFILE_KEY); }catch(e){}
+  updateHeaderAuth();
+  updateChatSection();
+  showToast('Kamu telah meninggalkan Realm.');
+}
+
+/* ════════════════════════════════════════
+   SUPABASE REALTIME CHAT
+════════════════════════════════════════ */
+let lastMsgId = null;
+
+function updateOnlineUsersFromChat(allMsgs) {
+    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+    const uniqueUsers = [];
+    const seen = new Set();
+
+    allMsgs.forEach(m => {
+        const msgTs = new Date(m.created_at).getTime();
+        if (msgTs > fiveMinutesAgo && !seen.has(m.username)) {
+            seen.add(m.username);
+            uniqueUsers.push({
+                username: m.username,
+                piece: m.character_piece || '♞',
+                charName: m.character_name || 'Pejuang'
+            });
+        }
+    });
+
+    onlineUsers = uniqueUsers;
+    renderOnlineList();
+}
+
+async function loadMessages() {
+    if (DEMO_MODE || !sb) return;
+
+    try {
+        const { data, error } = await sb.from('chat_messages')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            // Cek apakah pesan terbaru berbeda dengan yang lama
+            if (data[0].id !== lastMsgId) {
+                lastMsgId = data[0].id;
+                // Balik urutan agar yang lama di atas
+                messages = data.reverse().map(m => ({
+                    id: m.id, username: m.username,
+                    piece: m.character_piece, charName: m.character_name,
+                    message: m.message, ts: new Date(m.created_at).getTime()
+                }));
+                renderMessages();
+            }
+            
+            // Logika Pejuang Online: Ambil user unik yang chat dalam 5 menit terakhir
+            updateOnlineUsersFromChat(data);
+        }
+    } catch (e) {
+        console.error('Fetch error:', e);
+    }
+}
+
+let chatChannel = null;
+
+function subscribeChat() {
+    if (!sb || !currentUser) return;
+
+    // 1. Inisialisasi Channel
+    chatChannel = sb.channel('room-utama', {
+        config: {
+            presence: { key: currentUser.username },
+        },
+    });
+
+    // 2. Dengerin Chat Baru (Realtime Insert)
+    chatChannel.on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'chat_messages' 
+    }, payload => {
+        const m = payload.new;
+        // Cek supaya tidak double (Optimistic UI)
+        if (!messages.find(msg => msg.id === m.id)) {
+            messages.push({
+                id: m.id, username: m.username,
+                piece: m.character_piece, charName: m.character_name,
+                message: m.message, ts: new Date(m.created_at).getTime()
+            });
+            renderMessages();
+        }
+    });
+
+    // 3. LOGIKA PEJUANG ONLINE (Presence)
+    chatChannel
+        .on('presence', { event: 'sync' }, () => {
+            const state = chatChannel.presenceState();
+            // Ubah object state Supabase jadi array user yang enak dibaca
+            onlineUsers = Object.keys(state).map(key => {
+                const userPresence = state[key][0]; // Ambil data pertama
+                return {
+                    username: key,
+                    piece: userPresence.piece || '♞',
+                    charName: userPresence.charName || 'Pejuang'
+                };
+            });
+            renderOnlineList();
+        })
+        .on('presence', { event: 'join', key: key => {
+             showToast(`⚔ ${key} masuk ke medan perang!`);
+        }})
+        .on('presence', { event: 'leave', key: key => {
+             // Otomatis terpicu saat user tutup browser
+             console.log(`${key} meninggalkan arena`);
+        }});
+
+    // 4. Register diri kita agar terhitung "Online"
+    chatChannel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+            await chatChannel.track({
+                piece: currentUser.piece,
+                charName: currentUser.charName,
+                online_at: new Date().toISOString(),
+            });
+        }
+    });
+}
+
+async function sendMsg() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  
+  // 1. Cek validasi dasar
+  if (!text || !currentUser) return;
+  
+  // 2. Langsung kosongin input biar enak buat ngetik lagi
+  input.value = '';
+
+  // 3. Buat data pesan sementara (Ini yang bikin instan)
+  const tempId = 'temp-' + Date.now();
+  const msgData = {
+    id: tempId,
+    username: currentUser.username,
+    piece: currentUser.piece,
+    charName: currentUser.charName,
+    message: text,
+    ts: Date.now()
+  };
+
+  // 4. Langsung tampilin ke layar tanpa nunggu database
+  messages.push(msgData);
+  renderMessages();
+
+  // Mode Demo: Selesai di sini
+  if (DEMO_MODE) return;
+
+  // 5. Baru deh kirim ke Supabase di "backstage"
+  try {
+    const { error } = await sb.from('chat_messages').insert({
+      user_id: currentUser.id,
+      username: currentUser.username,
+      character_piece: currentUser.piece,
+      character_name: currentUser.charName,
+      message: text
+    });
+
+    if (error) throw error;
+
+  } catch(e) {
+    console.error('Kirim gagal:', e);
+    // Kalau gagal beneran, kita hapus pesan palsu tadi atau kasih tanda merah
+    showToast('Pesan gagal terkirim ke server, jir.');
+  }
+}
+
+// Pastikan fungsi renderMessages kamu punya fitur auto-scroll ke bawah:
+function renderMessages() {
+  const box = document.getElementById('chatMessages');
+  if (!box) return;
+
+  box.innerHTML = messages.map(m => {
+    const isOwn = currentUser && m.username === currentUser.username;
+    const time = new Date(m.ts).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+    return `
+      <div class="msg ${isOwn ? 'own' : ''}">
+        <div class="msg-avatar">${m.piece}</div>
+        <div class="msg-body">
+          <div class="msg-meta">
+            <span class="msg-username">${escHtml(m.username)}</span>
+            <span class="msg-charname">${escHtml(m.charName || '')}</span>
+            <span class="msg-time">${time}</span>
+          </div>
+          <div class="msg-bubble">${escHtml(m.message)}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // AUTO-SCROLL KE BAWAH
+  box.scrollTop = box.scrollHeight;
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+}
+
+/* ════════════════════════════════════════
+   ONLINE USERS
+════════════════════════════════════════ */
+function addOnlineUser(user) {
+  if (!onlineUsers.find(u => u.id === user.id)) onlineUsers.push(user);
+  renderOnlineList();
+}
+function removeOnlineUser(id) {
+  onlineUsers = onlineUsers.filter(u => u.id !== id);
+  renderOnlineList();
+}
+function renderOnlineList() {
+    const list = document.getElementById('onlineList');
+    if (!list) return;
+
+    // Update Judul Sidebar dengan jumlah pejuang
+    const sidebarHeader = document.querySelector('.sidebar-header');
+    if (sidebarHeader) {
+        sidebarHeader.innerHTML = `⚔ Pejuang Online (${onlineUsers.length})`;
+    }
+
+    if (onlineUsers.length === 0) {
+        list.innerHTML = '<div class="msg-system">Menghubungkan ke Realm...</div>';
+        return;
+    }
+
+    list.innerHTML = onlineUsers.map(u => `
+        <div class="online-user">
+            <span class="online-piece" style="filter: drop-shadow(0 0 5px var(--gold));">${u.piece}</span>
+            <div class="online-info">
+                <div class="online-name">${escHtml(u.username)}</div>
+                <div class="online-class">${escHtml(u.charName)}</div>
+            </div>
+            <div class="online-dot"></div>
+        </div>`).join('');
+}
+
+/* ════════════════════════════════════════
+   UI HELPERS
+════════════════════════════════════════ */
+function updateHeaderAuth() {
+  const el = document.getElementById('headerAuth');
+  if (currentUser) {
+    const wallet = readWallet();
+    el.innerHTML = `
+      <div class="wallet-badge"><span>🪙</span><span><small style="color:var(--muted);display:block;line-height:1">Coins</small><b>${wallet.coins}</b></span></div>
+      <div class="user-badge">
+        <span class="char-icon">${currentUser.piece}</span>
+        <span>${currentUser.username}</span>
+      </div>
+      <button class="btn-sm btn-ghost" onclick="doLogout()">Keluar</button>`;
+    
+    // Panggil fungsi update tombol di Hero
+    updateHeroCta(true);
+  } else {
+    el.innerHTML = `
+      <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()">☀ LIGHT</button>
+      <button class="btn-sm btn-outline" onclick="openModal()">Login / Register</button>`;
+    updateHeroCta(false);
+  }
+}
+
+function updateHeroCta(isLoggedIn) {
+  const cta = document.getElementById('heroCta');
+  if (!cta) return; // Mencegah error jika elemen belum render
+
+  if (isLoggedIn && currentUser) {
+    cta.innerHTML = `
+      <button class="btn-primary" onclick="openBattleClient()">⚔ Masuk Arena</button>
+      <button class="btn-primary" onclick="showPage('chat')">💬 Ruang Perang</button>
+      <button class="btn-primary" onclick="showPage('events')">🏆 Event</button>
+    `;
+  } else {
+    // Tombol default saat belum login
+    cta.innerHTML = `
+      <button class="btn-primary" onclick="openModal()">⚔ Bergabung Sekarang</button>
+      <button class="btn-sm btn-ghost" onclick="showPage('skills')">Lihat Skill Atlas →</button>
+    `;
+  }
+}
+
+let chatPoller = null;
+
+function updateChatSection() {
+  const out = document.getElementById('chatLoggedOut');
+  const inn = document.getElementById('chatLoggedIn');
+  if (!out || !inn) return;
+  if (currentUser) {
+    out.style.display = 'none';
+    inn.style.display = 'block';
+    loadMessages();
+    
+    // Mulai polling otomatis setiap 3 detik agar pesan baru muncul tanpa refresh
+    if (!chatPoller) {
+      chatPoller = setInterval(() => {
+        // Hanya fetch jika user sedang membuka halaman chat
+        if (document.getElementById('pageChat').style.display === 'block') {
+          loadMessages();
+        }
+      }, 3000);
+    }
+  } else {
+    out.style.display = 'block';
+    inn.style.display = 'none';
+    if (chatPoller) {
+      clearInterval(chatPoller);
+      chatPoller = null;
+    }
+  }
+}
+
+function showPage(name, trigger) {
+  document.getElementById('heroSection').style.display = name === 'home' ? 'block' : 'none';
+  document.getElementById('pageSkills').style.display  = name === 'skills' ? 'block' : 'none';
+  document.getElementById('pageEvents').style.display  = name === 'events' ? 'block' : 'none';
+  document.getElementById('pageChat').style.display    = name === 'chat' ? 'block' : 'none';
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  if (trigger) trigger.classList.add('active');
+  else {
+    const map = {home:0, skills:1, chat:2};
+    const btns = document.querySelectorAll('.nav-link');
+    if (btns[map[name]]) btns[map[name]].classList.add('active');
+  }
+  if (name === 'chat') updateChatSection();
+}
+
+function openModal() {
+  document.getElementById('authModal').classList.add('open');
+  document.getElementById('demoNote').style.display = DEMO_MODE ? 'block' : 'none';
+}
+function closeModal() { document.getElementById('authModal').classList.remove('open'); }
+document.getElementById('authModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('authModal')) closeModal();
+});
+
+function switchTab(tab) {
+  document.getElementById('formLogin').style.display    = tab === 'login'    ? 'block' : 'none';
+  document.getElementById('formRegister').style.display = tab === 'register' ? 'block' : 'none';
+  document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+  document.getElementById('tabReg').classList.toggle('active', tab === 'register');
+  setAuthError('');
+}
+
+function setAuthError(msg) { document.getElementById('authError').textContent = msg; }
+
+function pickChar(el) { return; }
+
+function selectCharCard(btn, piece, name, cls) { return; }
+
+function getCharName(cls) {
+  const map = { king:'Commander', queen:'Arcanist', bishop:'Guardian', knight:'Rider', rook:'Citadel', pawn:'Vanguard', warlock:'Relic', necromancer:'Revenant' };
+  return map[cls] || 'Pejuang Realm';
+}
+
+
+function applyTheme(theme){
+  const next = theme==='light' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  const btn = document.getElementById('themeToggleBtn');
+  if(btn) btn.textContent = next==='light' ? '🌙 DARK' : '☀ LIGHT';
+  try{ localStorage.setItem(STORAGE_THEME_KEY, next); }catch(e){}
+}
+function loadTheme(){
+  let theme='dark';
+  try{
+    const raw=localStorage.getItem(STORAGE_THEME_KEY);
+    if(raw==='light'||raw==='dark') theme=raw;
+  }catch(e){}
+  applyTheme(theme);
+}
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme')==='light'?'light':'dark';
+  applyTheme(cur==='light'?'dark':'light');
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+
+function openBattleClient(){
+  if(!currentUser){ openModal(); showToast('Login dulu untuk masuk arena.'); return; }
+  persistProfile(currentUser);
+  window.location.href = 'Chess.html';
+}
+
+function openProfile(){
+  if(!currentUser){ openModal(); showToast('Login dulu untuk membuka profil.'); return; }
+  persistProfile(currentUser);
+  window.location.href = 'Pf.html';
+}
+
+function openWorkshop(){
+  if(!currentUser){ openModal(); showToast('Login dulu untuk membuka workshop.'); return; }
+  persistProfile(currentUser);
+  window.location.href = 'Fix.html';
+}
+
+/* ── Check session on load (Supabase) ── */
+// Ganti bagian checkSession lama dengan ini
+async function checkSession() {
+  // 1. Coba pulihkan dari LocalStorage dulu biar cepet
+  try {
+    const raw = localStorage.getItem(STORAGE_PROFILE_KEY);
+    if (raw) {
+      currentUser = JSON.parse(raw);
+      updateHeaderAuth();
+      updateChatSection();
+      if (!DEMO_MODE) subscribeChat();
+    }
+  } catch(e) {}
+
+  // 2. Validasi session asli ke server Supabase
+  if (!DEMO_MODE && sb) {
+    const { data } = await sb.auth.getSession();
+    if (data?.session) {
+      const u = data.session.user;
+      const meta = u.user_metadata;
+      onLoginSuccess({ 
+        id: u.id, 
+        email: u.email, 
+        username: meta.username || meta.full_name || u.email.split('@')[0], 
+        piece: meta.piece || '♞', 
+        charName: meta.charName || 'Pejuang', 
+        charClass: meta.charClass || 'none' 
+      });
+    } else {
+      // Jika server bilang tidak ada session, pastikan tombol join muncul
+      if (!currentUser) updateHeroCta(false);
+    }
+  } else {
+    // Jika Demo Mode dan tidak ada data di storage
+    if (!currentUser) updateHeroCta(false);
+  }
+}
+
+// Update bagian startup (paling bawah)
+window.addEventListener('load', () => {
+  document.body.classList.add('simple-theme');
+  loadTheme();
+  
+  // Langsung munculin tombol "Bergabung" sebagai fallback awal
+  updateHeroCta(false); 
+  
+  // Baru cek session di background
+  checkSession();
+});
+
+document.body.classList.add('simple-theme');
+loadTheme();
+checkSession();
+const CLASS_GUIDE_DATA={
+  king:{glyph:'✦',role:'Tempo Class',name:'Commander',lore:'Commander unggul ketika satu tempo ekstra langsung mengubah posisi. Sangat cocok untuk pemain yang ingin belajar konsep initiative.',skill:'Royal Command: dapat 1 langkah ekstra pada giliran yang sama.',style:'Tempo & pressure',cd:'9 turn',best:'Pemula sampai menengah',warn:'Jangan dipakai saat posisi raja sendiri belum tertata.',tip:'Simpan untuk memaksa check, kabur dari pin, atau merapikan bidak aktif.'},
+  queen:{glyph:'❈',role:'Burst Class',name:'Arcanist',lore:'Arcanist adalah pilihan high-impact. Satu cast yang tepat bisa membalik papan, tetapi hanya tersedia dua kali dalam satu match.',skill:'Arcane Storm: hapus 1 bidak musuh non-King/non-Arcanist. Maksimal 2 cast per match.',style:'Burst & removal',cd:'14 turn · max 2 cast',best:'Pemain agresif',warn:'Boros cast terlalu awal bisa melemahkan late game.',tip:'Targetkan bidak aktif lawan yang paling mengganggu struktur atau jalur ke rajamu.'},
+  bishop:{glyph:'⛨',role:'Support Class',name:'Guardian',lore:'Guardian menjaga bidak kunci tetap hidup. Astral Ward memberi perlindungan tangkap sekaligus membersihkan efek lock.',skill:'Astral Ward: beri allied piece ward 3 turn + cleanse lock.',style:'Protect & stabilize',cd:'7 turn',best:'Pemula yang sering kehilangan bidak besar',warn:'Jangan asal ward pion pinggir kalau queen atau rook sedang ditekan.',tip:'Gunakan pada queen, rook aktif, atau bidak yang sedang menutup serangan lawan.'},
+  knight:{glyph:'✧',role:'Mobility Class',name:'Rider',lore:'Rider mengandalkan kejutan posisi. Knight dapat muncul mendadak di petak kosong mana pun untuk fork dan ancaman tak terduga.',skill:'Night Leap: teleport 1 knight ke petak kosong mana pun. Tidak aktif bila semua Rider sudah gugur.',style:'Mobility & forks',cd:'6 turn',best:'Pemain taktis',warn:'Teleport tanpa follow-up sering membuat knight menggantung.',tip:'Cari petak yang menekan dua target sekaligus atau langsung membuka serangan ke raja.'},
+  rook:{glyph:'✠',role:'Anchor Class',name:'Citadel',lore:'Citadel membuat strukturmu lebih tahan. Rook aktif menjadi pusat ward singkat untuk menahan kerusakan posisi.',skill:'Bastion Pulse: beri ward 2 turn pada rook sendiri atau ally di dekat rook. Tidak aktif bila semua Citadel sudah gugur.',style:'Anchor & hold',cd:'7 turn',best:'Pemain positional',warn:'Kalau rook belum aktif, efek class ini ikut menurun.',tip:'Buka file rook lebih dulu, lalu aktifkan saat satu garis perlu dipertahankan.'},
+  pawn:{glyph:'❖',role:'Growth Class',name:'Vanguard',lore:'Vanguard bermain untuk scaling. Pion terdepan bisa jadi ancaman besar ketika waktunya tepat.',skill:'Vanguard Crown: promosikan pion terdepan jadi Bishop, atau Queen bila Queen utama sudah hilang.',style:'Scaling & promotion',cd:'12 turn',best:'Pemain sabar',warn:'Jangan gunakan saat pion terdepan masih jauh dari pengaruh permainan.',tip:'Dorong satu file lebih dulu agar skill memberi dampak nyata.'},
+  necromancer:{glyph:'☥',role:'Recovery Class',name:'Revenant',lore:'Revenant bersinar ketika materialmu tertinggal. Ia memberi kesempatan comeback dari korban yang sudah jatuh.',skill:'Soul Recall: revive Pawn, Knight, atau Bishop ke backline bila ada ruang. Maksimal 2 cast per match.',style:'Recovery & late game',cd:'12 turn · max 2 cast',best:'Pemain yang suka comeback',warn:'Backline sempit bisa membuat revive gagal total.',tip:'Revive bidak yang langsung aktif, bukan sekadar paling mahal.'},
+  warlock:{glyph:'⚚',role:'Chaos Class',name:'Relic',lore:'Relic mengubah flow match lewat power-up di papan. Jackpot adalah versi langka dengan audio dan vignette emas khusus.',skill:'Chaos Relic: panggil relic acak mulai mid game. Jackpot chance 5%.',style:'Chaos & utility',cd:'8 turn',best:'Pemain eksperimental',warn:'Efek acak tidak selalu cocok dengan posisi.',tip:'Main aman sampai mid game, lalu gunakan relic saat papan mulai terbuka.'}
+};
+
+function openClassGuideDetail(cls){
+  const meta=CLASS_GUIDE_DATA[cls]; if(!meta) return;
+  document.getElementById('guideGlyph').textContent=meta.glyph;
+  document.getElementById('guideRole').textContent=meta.role;
+  document.getElementById('guideName').textContent=meta.name;
+  document.getElementById('guideLore').textContent=meta.lore;
+  document.getElementById('guideSkill').textContent=meta.skill;
+  document.getElementById('guideStyle').textContent=meta.style;
+  document.getElementById('guideCd').textContent=meta.cd;
+  document.getElementById('guideFor').textContent=meta.best;
+  document.getElementById('guideWarn').textContent=meta.warn;
+  document.getElementById('guideTip').textContent=meta.tip;
+  document.getElementById('classGuideModal').classList.add('open');
+}
+function closeClassGuideDetail(){ document.getElementById('classGuideModal').classList.remove('open'); }
+</script>
+</body>
+</html>

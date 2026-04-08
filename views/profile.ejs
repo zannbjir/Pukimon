@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Chess Fantasy — Profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --black:#060606;--void:#0c0c0c;--surface:#111111;--card:#141414;--card2:#1a1a1a;
+  --border:rgba(255,255,255,0.07);--gold:#c9a96e;--gold2:#e8c98a;--text:#e8e2d9;--muted:#5a5450;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--black);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+.site-header{
+  position:sticky;top:0;z-index:10;border-bottom:1px solid var(--border);
+  background:rgba(6,6,6,.92);backdrop-filter:blur(14px);padding:0 20px;height:64px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.logo{font-family:'Cinzel',serif;font-size:16px;font-weight:700;letter-spacing:.1em;color:var(--gold);display:flex;align-items:center;gap:10px}
+.nav-actions{display:flex;gap:10px;flex-wrap:wrap}
+.btn{
+  padding:10px 14px;border:1px solid var(--border);background:transparent;color:var(--text);
+  font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;cursor:pointer;border-radius:2px;text-decoration:none
+}
+.btn.gold{border-color:rgba(201,169,110,.35);color:var(--gold)}
+.btn:hover{background:rgba(255,255,255,.04)}
+.page{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:42px 18px 80px}
+.hero{
+  display:grid;grid-template-columns:320px 1fr;gap:20px;margin-bottom:20px
+}
+.card{
+  background:var(--card);border:1px solid var(--border);padding:24px;border-radius:2px
+}
+.profile-main{text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center}
+.avatar{
+  width:110px;height:110px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:54px;background:radial-gradient(circle at 30% 30%, rgba(201,169,110,.18), transparent 60%), var(--surface);
+  border:1px solid rgba(201,169,110,.22);box-shadow:0 0 40px rgba(201,169,110,.12)
+}
+.title{font-family:'Cinzel',serif;font-size:28px}
+.sub{color:var(--muted);font-size:12px;line-height:1.8}
+.meta-grid,.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.stat{
+  background:var(--surface);border:1px solid var(--border);padding:18px;text-align:center
+}
+.val{font-family:'Cinzel',serif;font-size:28px;color:var(--gold)}
+.lbl{font-size:10px;color:var(--muted);letter-spacing:.2em;margin-top:4px}
+.section-title{font-family:'Cinzel',serif;font-size:18px;margin-bottom:14px;color:var(--gold)}
+.big-panel{display:flex;flex-direction:column;gap:18px}
+.favorite-box{
+  display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--border);padding:18px
+}
+.favorite-piece{font-size:48px}
+.empty{padding:32px;text-align:center;color:var(--muted);font-style:italic}
+.progress{
+  height:8px;background:rgba(255,255,255,.06);overflow:hidden;border-radius:99px;margin-top:8px
+}
+.progress > div{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));width:0%}
+.avatar-btn{padding:8px 12px;border:1px solid rgba(201,169,110,.28);background:rgba(201,169,110,.08);color:var(--gold);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;cursor:pointer}
+.avatar-modal{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;z-index:50;padding:18px}
+.avatar-modal.open{display:flex}
+.avatar-panel{width:min(92vw,520px);background:var(--card);border:1px solid var(--border);padding:22px}
+.avatar-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+.avatar-choice{padding:14px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:28px;cursor:pointer}
+.avatar-choice:hover{border-color:rgba(201,169,110,.35)}
+.avatar-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;flex-wrap:wrap}
+@media (max-width:800px){
+  .hero{grid-template-columns:1fr}
+  .meta-grid,.stats-grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:560px){
+  .site-header{height:auto;padding:12px 14px;flex-wrap:wrap}
+  .meta-grid,.stats-grid{grid-template-columns:1fr}
+}
+
+html[data-theme="light"]{
+  --black:#f4f5f7;--void:#ffffff;--surface:#ffffff;--card:#ffffff;--card2:#eef1f4;
+  --border:rgba(15,23,42,0.10);--gold:#7b5a23;--gold2:#9b7430;--text:#121417;--muted:#6b7280;
+}
+body.simple-theme::before{opacity:.012}
+html[data-theme="light"] body::before{opacity:.008}
+body.simple-theme .card,body.simple-theme .stat,body.simple-theme .favorite-box,body.simple-theme .site-header{
+  backdrop-filter:none;box-shadow:none
+}
+.theme-toggle{
+  padding:10px 14px;border:1px solid rgba(201,169,110,.35);background:transparent;color:var(--gold);
+  font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;cursor:pointer;border-radius:2px
+}
+.theme-toggle:hover{background:rgba(201,169,110,.08)}
+
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="logo"><span>♞</span> CHESS FANTASY</div>
+  <div class="nav-actions">
+    <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()">☀ LIGHT</button>
+    <a class="btn gold" href="lobby.html">Lobby</a>
+    <a class="btn" href="Chess.html">Arena</a>
+    <a class="btn" href="Fix.html">Workshop</a>
+    <a class="btn" href="Fix.html">Workshop</a>
+  </div>
+</header>
+
+<main class="page">
+  <section class="hero">
+    <div class="card profile-main">
+      <div class="avatar" id="avatar">♞</div>
+      <div class="title" id="username">Pejuang Realm</div>
+      <div class="sub" id="email">Belum login</div>
+      <div class="sub" id="favoriteInline">Karakter favorit: —</div>
+      <button class="avatar-btn" onclick="openAvatarModal()">Ganti Avatar</button>
+    </div>
+    <div class="card big-panel">
+      <div>
+        <div class="section-title">Ringkasan</div>
+        <div class="meta-grid">
+          <div class="stat"><div class="val" id="totalMatches">0</div><div class="lbl">TOTAL MATCH</div></div>
+          <div class="stat"><div class="val" id="winRate">0%</div><div class="lbl">WIN RATE</div></div>
+          <div class="stat"><div class="val" id="wins">0</div><div class="lbl">MENANG</div></div>
+          <div class="stat"><div class="val" id="losses">0</div><div class="lbl">KALAH</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="section-title">Karakter Favorit</div>
+        <div class="favorite-box">
+          <div class="favorite-piece" id="favoritePiece">—</div>
+          <div style="flex:1">
+            <div style="font-family:'Cinzel',serif;font-size:20px" id="favoriteName">Belum ada data</div>
+            <div class="sub" id="favoriteDesc">Mainkan beberapa match untuk melihat class yang paling sering kamu pakai.</div>
+            <div class="progress"><div id="favoriteBar"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">Detail Statistik</div>
+    <div class="stats-grid">
+      <div class="stat"><div class="val" id="draws">0</div><div class="lbl">SERI</div></div>
+      <div class="stat"><div class="val" id="customMatches">0</div><div class="lbl">CUSTOM MATCH</div></div>
+      <div class="stat"><div class="val" id="rankTier">BRONZE</div><div class="lbl">RANK TIER</div></div>
+      <div class="stat"><div class="val" id="rankPoints">0</div><div class="lbl">RANK POINTS</div></div>
+      <div class="stat"><div class="val" id="coinBalance">0</div><div class="lbl">COINS</div></div>
+      <div class="stat"><div class="val" id="coinsEarned">0</div><div class="lbl">COINS EARNED</div></div>
+    </div>
+    <div id="emptyState" class="empty" style="display:none">Belum ada riwayat pertandingan yang tersimpan di perangkat ini.</div>
+  </section>
+</main>
+
+
+<div class="avatar-modal" id="avatarModal" onclick="if(event.target.id==='avatarModal')closeAvatarModal()">
+  <div class="avatar-panel">
+    <div class="section-title">Pilih Avatar Profile</div>
+    <div class="sub">Avatar disimpan ke profile lokal dan ikut terbaca di lobby/gameplay yang memakai data profil yang sama.</div>
+    <div class="avatar-grid" id="avatarGrid"></div>
+    <div class="avatar-actions">
+      <button class="btn" onclick="closeAvatarModal()">Batal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PROFILE_KEY='cf_profile';
+const STATS_KEY='cf_stats';
+const RANK_KEY='cf_rank_state';
+const THEME_KEY='cf_theme';
+const AVATAR_OPTIONS=['♞','✦','❈','⛨','✧','✠','❖','☥','⚚','♛','♜','♝'];
+const WALLET_KEY='cf_wallet';
+const CLASS_META={
+  king:{piece:'👑',name:'Commander',desc:'Kamu paling sering memakai tempo ekstra untuk menekan lawan.'},
+  queen:{piece:'🌀',name:'Arcanist',desc:'Class ofensif favoritmu sejauh ini.'},
+  bishop:{piece:'✨',name:'Guardian',desc:'Pilihan defensif dan proteksi paling sering.'},
+  knight:{piece:'🌙',name:'Rider',desc:'Mobilitas tinggi jadi ciri gaya mainmu.'},
+  rook:{piece:'🏰',name:'Citadel',desc:'Kamu suka kontrol garis dan lock yang keras.'},
+  pawn:{piece:'🌱',name:'Vanguard',desc:'Kamu suka scaling dan promosi cepat.'},
+  warlock:{piece:'🔮',name:'Relic',desc:'Kamu suka tempo dan relic pool yang tak terduga.'},
+  necromancer:{piece:'🧟',name:'Revenant',desc:'Kamu suka value jangka panjang lewat kebangkitan bidak.'},
+  none:{piece:'♞',name:'Realm Fighter',desc:'Belum ada class dominan.'}
+};
+
+function readJson(key, fallback){
+  try{
+    const raw=localStorage.getItem(key);
+    return raw?JSON.parse(raw):fallback;
+  }catch(e){ return fallback; }
+}
+
+
+function applyTheme(theme){
+  const next=theme==='light'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',next);
+  const btn=document.getElementById('themeToggleBtn');
+  if(btn) btn.textContent=next==='light'?'🌙 DARK':'☀ LIGHT';
+  try{localStorage.setItem(THEME_KEY,next);}catch(e){}
+}
+function loadTheme(){
+  let theme='dark';
+  try{
+    const raw=localStorage.getItem(THEME_KEY);
+    if(raw==='light'||raw==='dark') theme=raw;
+  }catch(e){}
+  applyTheme(theme);
+}
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme')==='light'?'light':'dark';
+  applyTheme(cur==='light'?'dark':'light');
+}
+
+function writeProfile(profile){ try{ localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); }catch(e){} }
+function openAvatarModal(){ document.getElementById('avatarModal').classList.add('open'); renderAvatarChoices(); }
+function closeAvatarModal(){ document.getElementById('avatarModal').classList.remove('open'); }
+function renderAvatarChoices(){
+  const box=document.getElementById('avatarGrid'); if(!box) return;
+  const profile=readJson(PROFILE_KEY, {piece:'♞'});
+  box.innerHTML=AVATAR_OPTIONS.map(piece=>`<button class="avatar-choice" onclick="chooseAvatar('${piece}')" style="border-color:${profile.piece===piece?'rgba(201,169,110,.45)':'var(--border)'}">${piece}</button>`).join('');
+}
+function chooseAvatar(piece){
+  const profile=readJson(PROFILE_KEY, {username:'Pejuang Realm', email:'Belum login', piece:'♞', charName:'Pejuang Realm'});
+  profile.piece=piece;
+  writeProfile(profile);
+  render();
+  renderAvatarChoices();
+}
+
+function render(){
+  const profile=readJson(PROFILE_KEY, {username:'Pejuang Realm', email:'Belum login', piece:'♞', charName:'Pejuang Realm'});
+  const stats=readJson(STATS_KEY, {wins:0,losses:0,draws:0,totalMatches:0,customMatches:0,classUsage:{}});
+  const total=stats.totalMatches||0;
+  const wins=stats.wins||0, losses=stats.losses||0, draws=stats.draws||0;
+  const wr=total>0 ? Math.round((wins/total)*100) : 0;
+  const usage=stats.classUsage||{};
+  const rank=readJson(RANK_KEY,{points:0});
+  const wallet=readJson(WALLET_KEY,{coins:0,earned:0});
+  const rankTier=(rank.points||0)>=220?'GOLD':((rank.points||0)>=100?'SILVER':'BRONZE');
+  let fav='none', favCount=0;
+  Object.entries(usage).forEach(([k,v])=>{ if((v||0)>favCount){ fav=k; favCount=v||0; } });
+  const meta=CLASS_META[fav] || CLASS_META.none;
+
+  document.getElementById('avatar').textContent=profile.piece || '♞';
+  document.getElementById('username').textContent=profile.username || 'Pejuang Realm';
+  document.getElementById('email').textContent=profile.email || 'Belum login';
+  document.getElementById('totalMatches').textContent=String(total);
+  document.getElementById('winRate').textContent=`${wr}%`;
+  document.getElementById('wins').textContent=String(wins);
+  document.getElementById('losses').textContent=String(losses);
+  document.getElementById('draws').textContent=String(draws);
+  document.getElementById('customMatches').textContent=String(stats.customMatches||0);
+  document.getElementById('rankTier').textContent=rankTier;
+  document.getElementById('rankPoints').textContent=String(rank.points||0);
+  document.getElementById('coinBalance').textContent=String(wallet.coins||0);
+  document.getElementById('coinsEarned').textContent=String(wallet.earned||0);
+  document.getElementById('favoriteInline').textContent=`Karakter favorit: ${meta.name}`;
+  document.getElementById('favoritePiece').textContent=meta.piece;
+  document.getElementById('favoriteName').textContent=meta.name;
+  document.getElementById('favoriteDesc').textContent=meta.desc;
+  document.getElementById('favoriteBar').style.width = total>0 ? `${Math.max(12, Math.round((favCount/Math.max(total,1))*100))}%` : '0%';
+  document.getElementById('emptyState').style.display = total===0 && !(stats.customMatches>0) ? 'block' : 'none';
+}
+document.body.classList.add('simple-theme');
+loadTheme();
+render();
+</script>
+</body>
+</html>
